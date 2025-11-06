@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ManuMap - MVP</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f0f0;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 { text-align: center; color: #1a5fb4; }
+    .mapa {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+      max-width: 1000px;
+      margin: 30px auto;
+    }
+    .area {
+      background: white;
+      border: 4px solid #ccc;
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      min-height: 180px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      position: relative;
+    }
+    .codigo {
+      font-size: 28px;
+      font-weight: bold;
+      color: #1a5fb4;
+      margin-bottom: 10px;
+    }
+    .equipe {
+      background: #4CAF50;
+      color: white;
+      padding: 8px;
+      margin: 6px 0;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: move;
+      user-select: none;
+    }
+    .eletrica { background: #FFC107; color: black; }
+    .caldeiraria { background: #9C27B0; color: white; }
+    .disponiveis {
+      max-width: 1000px;
+      margin: 40px auto;
+      background: #eee;
+      padding: 15px;
+      border-radius: 10px;
+    }
+    .disponiveis h2 { margin-top: 0; color: #333; }
+  </style>
+</head>
+<body>
+  <h1>ManuMap - Gestão de Equipes</h1>
+
+  <div id="mapa" class="mapa"></div>
+
+  <div class="disponiveis">
+    <h2>Equipes Disponíveis</h2>
+    <div id="disponiveis-lista"></div>
+  </div>
+
+  <script>
+    const API = 'http://localhost:8080/api';
+
+    // Carregar dados
+    async function carregar() {
+      const [areas, equipes] = await Promise.all([
+        fetch(`${API}/areas`).then(r => r.json()),
+        fetch(`${API}/equipes`).then(r => r.json())
+      ]);
+
+      renderMapa(areas, equipes);
+    }
+
+    // Renderizar o mapa
+    function renderMapa(areas, equipes) {
+      const mapa = document.getElementById('mapa');
+      mapa.innerHTML = '';
+
+      areas.forEach(area => {
+        const div = document.createElement('div');
+        div.className = 'area';
+        div.dataset.codigo = area.codigo || '???';
+
+        div.innerHTML = `
+          <div class="codigo">${area.codigo || 'Sem código'}</div>
+          <div class="equipes-aqui"></div>
+        `;
+
+        // Equipes na área
+        const equipesAqui = equipes.filter(e => e.areaAtual === area.codigo);
+        equipesAqui.forEach(eq => {
+          const card = criarCardEquipe(eq);
+          div.querySelector('.equipes-aqui').appendChild(card);
+        });
+
+        mapa.appendChild(div);
+      });
+
+      // Equipes disponíveis
+      const disponiveis = equipes.filter(e => !e.areaAtual);
+      const lista = document.getElementById('disponiveis-lista');
+      lista.innerHTML = '';
+      disponiveis.forEach(eq => {
+        lista.appendChild(criarCardEquipe(eq));
+      });
+
+      adicionarDragAndDrop();
+    }
+
+    // Criar card de equipe
+    function criarCardEquipe(eq) {
+      const card = document.createElement('div');
+      card.className = 'equipe';
+      card.draggable = true;
+      card.dataset.id = eq.id;
+
+      if (eq.tipo === 'ELETRICA') card.classList.add('eletrica');
+      if (eq.tipo === 'CALDEIRARIA') card.classList.add('caldeiraria');
+
+      card.innerHTML = `
+        <strong>${eq.nome}</strong><br>
+        <small>${eq.atividadeAtual || 'Sem atividade'}</small>
+      `;
+
+      return card;
+    }
+
+    // Drag & Drop
+    function adicionarDragAndDrop() {
+      let dragged;
+
+      document.addEventListener('dragstart', e => {
+        if (e.target.classList.contains('equipe')) {
+          dragged = e.target;
+          setTimeout(() => dragged.style.display = 'none', 0);
+        }
+      });
+
+      document.addEventListener('dragend', e => {
+        if (dragged) {
+          setTimeout(() => dragged.style.display = 'block', 0);
+          dragged = null;
+        }
+      });
+
+      document.querySelectorAll('.area').forEach(area => {
+        area.addEventListener('dragover', e => e.preventDefault());
+        area.addEventListener('drop', async e => {
+          e.preventDefault();
+          if (!dragged) return;
+
+          const equipeId = dragged.dataset.id;
+          const novaArea = area.dataset.codigo;
+
+          await fetch(`${API}/equipes/${equipeId}/area`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ area: novaArea })
+          });
+
+          carregar();
+        });
+      });
+
+      // Área de disponíveis
+      const disponiveis = document.getElementById('disponiveis-lista');
+      disponiveis.addEventListener('dragover', e => e.preventDefault());
+      disponiveis.addEventListener('drop', async e => {
+        e.preventDefault();
+        if (!dragged) return;
+
+        const equipeId = dragged.dataset.id;
+
+        await fetch(`${API}/equipes/${equipeId}/area`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ area: null })
+        });
+
+        carregar();
+      });
+    }
+
+    // Atualiza a cada 5 segundos
+    carregar();
+    setInterval(carregar, 5000);
+  </script>
+</body>
+</html>
