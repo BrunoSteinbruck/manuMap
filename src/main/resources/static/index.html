@@ -4,13 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>ManuMap - MVP</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="style.css">
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f0f0f0;
-      margin: 0;
-      padding: 20px;
-    }
+    body { font-family: Arial, sans-serif; background: #f0f0f0; margin: 0; padding: 20px; }
     h1 { text-align: center; color: #1a5fb4; }
     .mapa {
       display: grid;
@@ -47,6 +44,19 @@
     }
     .eletrica { background: #FFC107; color: black; }
     .caldeiraria { background: #9C27B0; color: white; }
+
+    /* Card da equipe dentro da área – clicável */
+    .equipe-alocada {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 6px;
+      padding: 8px;
+      margin: 6px 0;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .equipe-alocada:hover { background: #e9ecef; }
+
     .disponiveis {
       max-width: 1000px;
       margin: 40px auto;
@@ -63,14 +73,90 @@
   <div id="mapa" class="mapa"></div>
 
   <div class="disponiveis">
-    <h2>Equipes Disponíveis</h2>
+    <h2>Equipes</h2>
     <div id="disponiveis-lista"></div>
   </div>
 
   <script>
     const API = 'http://localhost:8080/api';
 
-    // Carregar dados
+    // ------------------------------------------------------------------
+    // Funções auxiliares
+    // ------------------------------------------------------------------
+    function getIcone(tipo) {
+      switch (tipo) {
+        case 'MECANICA':    return 'Mecânica';
+        case 'ELETRICA':    return 'Elétrica';
+        case 'CALDEIRARIA': return 'Caldeiraria';
+        default:            return 'Equipe';
+      }
+    }
+
+    async function editarAtividade(equipeId, textoAtual) {
+      const novo = prompt("Atividade atual da equipe:", textoAtual || "");
+      if (novo === null) return; // cancelou
+
+      const atividade = novo.trim() === "" ? null : novo.trim();
+
+      await fetch(`${API}/equipes/${equipeId}/atividade`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ atividadeAtual: atividade })
+      });
+
+      carregar(); // recarrega tudo
+    }
+
+    // ------------------------------------------------------------------
+    // Criação dos cards
+    // ------------------------------------------------------------------
+	// 1. Card do painel inferior (todas as equipes) – com cor + ícone
+	function criarCardEquipeDisponivel(eq) {
+	  const card = document.createElement('div');
+	  card.className = 'equipe';
+	  card.draggable = true;
+	  card.dataset.id = eq.id;
+
+	  // Mantém as cores originais
+	  if (eq.tipo === 'ELETRICA') card.classList.add('eletrica');
+	  if (eq.tipo === 'CALDEIRARIA') card.classList.add('caldeiraria');
+	  // Mecânica já é verde por padrão
+
+	  const local = eq.areaAtual ? `Área ${eq.areaAtual}` : 'Disponível';
+
+	  card.innerHTML = `
+	    <strong>${getIcone(eq.tipo)} ${eq.nome}</strong><br>
+	    <small>${local} • ${eq.atividadeAtual || 'Sem atividade'}</small>
+	  `;
+	  return card;
+	}
+
+	// 2. Card dentro do mapa (alocadas) – com cor + clicável
+	function criarCardEquipeAlocada(eq) {
+	  const card = document.createElement('div');
+	  card.className = 'equipe'; // ← aqui estava o erro! Precisa da classe "equipe" pra ter cor
+	  if (eq.tipo === 'ELETRICA') card.classList.add('eletrica');
+	  if (eq.tipo === 'CALDEIRARIA') card.classList.add('caldeiraria');
+
+	  card.style.cursor = 'pointer';
+	  card.style.margin = '6px 0';
+	  card.style.padding = '8px';
+	  card.style.borderRadius = '6px';
+
+	  const textoEscapado = (eq.atividadeAtual || '').replace(/'/g, "\\'");
+	  card.onclick = () => editarAtividade(eq.id, textoEscapado);
+
+	  card.innerHTML = `
+	    <strong>${getIcone(eq.tipo)} ${eq.nome}</strong><br>
+	    <small style="opacity:0.9;">
+	      ${eq.atividadeAtual || '<em style="color:#aaa;">Clique para definir atividade</em>'}
+	    </small>
+	  `;
+	  return card;
+	}
+    // ------------------------------------------------------------------
+    // Renderização
+    // ------------------------------------------------------------------
     async function carregar() {
       const [areas, equipes] = await Promise.all([
         fetch(`${API}/areas`).then(r => r.json()),
@@ -80,7 +166,6 @@
       renderMapa(areas, equipes);
     }
 
-    // Renderizar o mapa
     function renderMapa(areas, equipes) {
       const mapa = document.getElementById('mapa');
       mapa.innerHTML = '';
@@ -95,46 +180,28 @@
           <div class="equipes-aqui"></div>
         `;
 
-        // Equipes na área
+        // Equipes alocadas nesta área
         const equipesAqui = equipes.filter(e => e.areaAtual === area.codigo);
         equipesAqui.forEach(eq => {
-          const card = criarCardEquipe(eq);
-          div.querySelector('.equipes-aqui').appendChild(card);
+          div.querySelector('.equipes-aqui').appendChild(criarCardEquipeAlocada(eq));
         });
 
         mapa.appendChild(div);
       });
 
-      // Equipes disponíveis
-      const disponiveis = equipes.filter(e => !e.areaAtual);
+      // Painel de equipes (todas – disponíveis ou não)
       const lista = document.getElementById('disponiveis-lista');
       lista.innerHTML = '';
-      disponiveis.forEach(eq => {
-        lista.appendChild(criarCardEquipe(eq));
+      equipes.forEach(eq => {
+        lista.appendChild(criarCardEquipeDisponivel(eq));
       });
 
       adicionarDragAndDrop();
     }
 
-    // Criar card de equipe
-    function criarCardEquipe(eq) {
-      const card = document.createElement('div');
-      card.className = 'equipe';
-      card.draggable = true;
-      card.dataset.id = eq.id;
-
-      if (eq.tipo === 'ELETRICA') card.classList.add('eletrica');
-      if (eq.tipo === 'CALDEIRARIA') card.classList.add('caldeiraria');
-
-      card.innerHTML = `
-        <strong>${eq.nome}</strong><br>
-        <small>${eq.atividadeAtual || 'Sem atividade'}</small>
-      `;
-
-      return card;
-    }
-
-    // Drag & Drop
+    // ------------------------------------------------------------------
+    // Drag & Drop (mantido exatamente como você já tinha)
+    // ------------------------------------------------------------------
     function adicionarDragAndDrop() {
       let dragged;
 
@@ -145,7 +212,7 @@
         }
       });
 
-      document.addEventListener('dragend', e => {
+      document.addEventListener('dragend', () => {
         if (dragged) {
           setTimeout(() => dragged.style.display = 'block', 0);
           dragged = null;
@@ -171,7 +238,6 @@
         });
       });
 
-      // Área de disponíveis
       const disponiveis = document.getElementById('disponiveis-lista');
       disponiveis.addEventListener('dragover', e => e.preventDefault());
       disponiveis.addEventListener('drop', async e => {
@@ -190,7 +256,9 @@
       });
     }
 
-    // Atualiza a cada 5 segundos
+    // ------------------------------------------------------------------
+    // Início
+    // ------------------------------------------------------------------
     carregar();
     setInterval(carregar, 5000);
   </script>
