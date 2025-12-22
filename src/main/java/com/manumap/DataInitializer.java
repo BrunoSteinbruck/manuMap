@@ -51,9 +51,18 @@ public class DataInitializer {
         	
         	if (equipeRepo.count() == 0) {
         		equipeRepo.saveAll(Arrays.asList(
-        		new Equipe(null, "Equipe Alfa",TipoManutencao.MECANICA, "A11", "Alinhamento da B 11-02"),
-        		new Equipe(null, "Equipe Bola",TipoManutencao.ELETRICA, null, null),
-        		new Equipe(null, "Equipe Caju",TipoManutencao.CALDEIRARIA, null, null)
+        		new Equipe(null, "Equipe A",TipoManutencao.MECANICA, "A11", "Alinhamento da B 11-02"),
+        		new Equipe(null, "Equipe B",TipoManutencao.ELETRICA, null, null),
+        		new Equipe(null, "Equipe C",TipoManutencao.CALDEIRARIA, null, null),new Equipe(null, "Equipe D", TipoManutencao.ANDAIME, null, null),
+        		new Equipe(null, "Equipe E", TipoManutencao.PINTURA, null, null),
+        		new Equipe(null, "Equipe F", TipoManutencao.MECANICA, null, "Troca de rolamentos do ventilador V04"),
+        		new Equipe(null, "Equipe G", TipoManutencao.ELETRICA, null, "Inspeção termográfica no CCM-02"),
+        		new Equipe(null, "Equipe H", TipoManutencao.CALDEIRARIA, null, "Reparo em solda de tubulação de 4 polegadas"),
+        		new Equipe(null, "Equipe I", TipoManutencao.MECANICA, null, "Lubrificação periódica da Ponte Rolante 01"),
+        		new Equipe(null, "Equipe J", TipoManutencao.ELETRICA, null, "Teste de continuidade e isolamento de cabos"),
+        		new Equipe(null, "Equipe K", TipoManutencao.CALDEIRARIA, null, "Troca de juntas do flange do reservatório R-02"),
+        		new Equipe(null, "Equipe L", TipoManutencao.MECANICA, null, "Alinhamento de eixo da bomba B-05"),
+        		new Equipe(null, "Equipe M", TipoManutencao.ELETRICA, null, "Limpeza e reaperto de barramentos do painel P-10")
         	));
         	}
         };

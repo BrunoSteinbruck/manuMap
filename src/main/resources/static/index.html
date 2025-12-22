@@ -3,264 +3,213 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>ManuMap - MVP</title>
+  <title>ManuMap - Sistema de Gestão de Equipes</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-  <link rel="stylesheet" href="style.css">
   <style>
-    body { font-family: Arial, sans-serif; background: #f0f0f0; margin: 0; padding: 20px; }
-    h1 { text-align: center; color: #1a5fb4; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f7f6; margin: 0; padding: 20px; color: #333; }
+    h1 { text-align: left; color: #2c3e50; font-weight: 600; margin-bottom: 30px; border-bottom: 2px solid #2c3e50; padding-bottom: 10px; }
+    
+    /* Layout do Mapa */
     .mapa {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 20px;
-      max-width: 1000px;
-      margin: 30px auto;
+      gap: 15px;
+      max-width: 100%;
+      margin-bottom: 40px;
     }
     .area {
-      background: white;
-      border: 4px solid #ccc;
-      border-radius: 12px;
-      padding: 20px;
-      text-align: center;
-      min-height: 180px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-      position: relative;
+      background: #ffffff; border: 1px solid #bdc3c7; border-radius: 4px;
+      padding: 12px; min-height: 200px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
-    .codigo {
-      font-size: 28px;
-      font-weight: bold;
-      color: #1a5fb4;
-      margin-bottom: 10px;
-    }
+    .codigo { font-size: 18px; font-weight: bold; color: #2c3e50; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px; }
+
+    /* Estilo Técnico das Equipes */
     .equipe {
-      background: #4CAF50;
-      color: white;
-      padding: 8px;
-      margin: 6px 0;
-      border-radius: 6px;
-      font-size: 14px;
-      cursor: move;
-      user-select: none;
+      color: #fff; padding: 8px 12px; margin: 5px 0; border-radius: 3px;
+      font-size: 12px; cursor: move; user-select: none; font-weight: 600;
+      text-transform: uppercase; border: 1px solid rgba(0,0,0,0.1);
     }
-    .eletrica { background: #FFC107; color: black; }
-    .caldeiraria { background: #9C27B0; color: white; }
 
-    /* Card da equipe dentro da área – clicável */
-    .equipe-alocada {
-      background: #f8f9fa;
-      border: 1px solid #dee2e6;
-      border-radius: 6px;
-      padding: 8px;
-      margin: 6px 0;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-    .equipe-alocada:hover { background: #e9ecef; }
+    /* Cores de Identificação Técnica */
+    .mecanica { background: #27ae60; }        /* Verde */
+    .eletrica { background: #f1c40f; color: #000; } /* Amarelo */
+    .caldeiraria { background: #8e44ad; }     /* Roxo */
+    .instrumentacao { background: #2980b9; }  /* Azul */
+    .pintura { background: #d35400; }         /* Laranja */
+    .andaime { background: #7f8c8d; }         /* Cinza Escuro */
 
-    .disponiveis {
-      max-width: 1000px;
-      margin: 40px auto;
-      background: #eee;
-      padding: 15px;
-      border-radius: 10px;
+    /* Estado Alocado na Lista de Controle */
+    .equipe.alocada-no-mapa {
+      opacity: 0.5;
+      border: 1px dashed #7f8c8d;
+      background: #ecf0f1 !important;
+      color: #7f8c8d !important;
     }
-    .disponiveis h2 { margin-top: 0; color: #333; }
+
+    /* Indicador de Localização */
+    .badge-local {
+      display: block;
+      background: rgba(0,0,0,0.05);
+      color: inherit;
+      padding: 2px 4px;
+      border-radius: 2px;
+      font-size: 10px;
+      margin-top: 4px;
+      border-top: 1px solid rgba(0,0,0,0.1);
+    }
+
+    /* Navegação por Abas Profissionais */
+    .container-equipes { background: #fff; border: 1px solid #bdc3c7; border-radius: 4px; }
+    .nav-tabs-custom { display: flex; background: #eaeff2; border-bottom: 1px solid #bdc3c7; }
+    .tab-btn {
+      flex: 1; padding: 10px; border: none; background: none; cursor: pointer;
+      font-weight: 600; font-size: 11px; text-transform: uppercase; color: #7f8c8d;
+      border-right: 1px solid #bdc3c7;
+    }
+    .tab-btn:hover { background: #d5dce0; }
+    .tab-btn.active { background: #fff; color: #2c3e50; position: relative; }
+    .tab-btn.active::after { content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 3px; background: #2c3e50; }
+
+    .tab-content { padding: 15px; display: flex; flex-wrap: wrap; gap: 8px; min-height: 80px; }
   </style>
 </head>
 <body>
-  <h1>ManuMap - Gestão de Equipes</h1>
+
+  <h1>Controle de Alocação de Equipes</h1>
 
   <div id="mapa" class="mapa"></div>
 
-  <div class="disponiveis">
-    <h2>Equipes</h2>
-    <div id="disponiveis-lista"></div>
+  <div class="container-equipes">
+    <div class="nav-tabs-custom">
+      <button class="tab-btn active" data-tipo="MECANICA" onclick="switchTab('MECANICA')">Mecânica</button>
+      <button class="tab-btn" data-tipo="ELETRICA" onclick="switchTab('ELETRICA')">Elétrica</button>
+      <button class="tab-btn" data-tipo="INSTRUMENTACAO" onclick="switchTab('INSTRUMENTACAO')">Instrumentação</button>
+      <button class="tab-btn" data-tipo="CALDEIRARIA" onclick="switchTab('CALDEIRARIA')">Caldeiraria</button>
+      <button class="tab-btn" data-tipo="PINTURA" onclick="switchTab('PINTURA')">Pintura</button>
+      <button class="tab-btn" data-tipo="ANDAIME" onclick="switchTab('ANDAIME')">Andaime</button>
+    </div>
+    <div id="disponiveis-lista" class="tab-content"></div>
   </div>
 
   <script>
     const API = 'http://localhost:8080/api';
+    let abaAtual = 'MECANICA';
 
-    // ------------------------------------------------------------------
-    // Funções auxiliares
-    // ------------------------------------------------------------------
-    function getIcone(tipo) {
-      switch (tipo) {
-        case 'MECANICA':    return 'Mecânica';
-        case 'ELETRICA':    return 'Elétrica';
-        case 'CALDEIRARIA': return 'Caldeiraria';
-        default:            return 'Equipe';
+    function switchTab(tipo) {
+      abaAtual = tipo;
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.tipo === tipo));
+      carregar();
+    }
+
+    function criarCard(eq, localizacao) {
+      const card = document.createElement('div');
+      card.className = `equipe ${eq.tipo.toLowerCase()}`;
+      card.draggable = true;
+      card.dataset.id = eq.id;
+
+      if (localizacao === 'lista' && eq.areaAtual) {
+        card.classList.add('alocada-no-mapa');
       }
+
+      const infoLocal = (localizacao === 'lista' && eq.areaAtual) ? 
+        `<span class="badge-local">LOCAL: ${eq.areaAtual}</span>` : '';
+      
+      card.innerHTML = `
+        <div>${eq.nome}</div>
+        <div style="font-size: 9px; font-weight: normal; margin-top: 2px;">${eq.atividadeAtual || 'SEM ATIVIDADE DEFINIDA'}</div>
+        ${infoLocal}
+      `;
+
+      card.onclick = () => {
+        const novo = prompt("DEFINIR ATIVIDADE:", eq.atividadeAtual || "");
+        if (novo !== null) {
+          fetch(`${API}/equipes/${eq.id}/atividade`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ atividadeAtual: novo.trim() || null })
+          }).then(carregar);
+        }
+      };
+
+      return card;
     }
 
-    async function editarAtividade(equipeId, textoAtual) {
-      const novo = prompt("Atividade atual da equipe:", textoAtual || "");
-      if (novo === null) return; // cancelou
-
-      const atividade = novo.trim() === "" ? null : novo.trim();
-
-      await fetch(`${API}/equipes/${equipeId}/atividade`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ atividadeAtual: atividade })
-      });
-
-      carregar(); // recarrega tudo
-    }
-
-    // ------------------------------------------------------------------
-    // Criação dos cards
-    // ------------------------------------------------------------------
-	// 1. Card do painel inferior (todas as equipes) – com cor + ícone
-	function criarCardEquipeDisponivel(eq) {
-	  const card = document.createElement('div');
-	  card.className = 'equipe';
-	  card.draggable = true;
-	  card.dataset.id = eq.id;
-
-	  // Mantém as cores originais
-	  if (eq.tipo === 'ELETRICA') card.classList.add('eletrica');
-	  if (eq.tipo === 'CALDEIRARIA') card.classList.add('caldeiraria');
-	  // Mecânica já é verde por padrão
-
-	  const local = eq.areaAtual ? `Área ${eq.areaAtual}` : 'Disponível';
-
-	  card.innerHTML = `
-	    <strong>${getIcone(eq.tipo)} ${eq.nome}</strong><br>
-	    <small>${local} • ${eq.atividadeAtual || 'Sem atividade'}</small>
-	  `;
-	  return card;
-	}
-
-	// 2. Card dentro do mapa (alocadas) – com cor + clicável
-	function criarCardEquipeAlocada(eq) {
-	  const card = document.createElement('div');
-	  card.className = 'equipe'; // ← aqui estava o erro! Precisa da classe "equipe" pra ter cor
-	  if (eq.tipo === 'ELETRICA') card.classList.add('eletrica');
-	  if (eq.tipo === 'CALDEIRARIA') card.classList.add('caldeiraria');
-
-	  card.style.cursor = 'pointer';
-	  card.style.margin = '6px 0';
-	  card.style.padding = '8px';
-	  card.style.borderRadius = '6px';
-
-	  const textoEscapado = (eq.atividadeAtual || '').replace(/'/g, "\\'");
-	  card.onclick = () => editarAtividade(eq.id, textoEscapado);
-
-	  card.innerHTML = `
-	    <strong>${getIcone(eq.tipo)} ${eq.nome}</strong><br>
-	    <small style="opacity:0.9;">
-	      ${eq.atividadeAtual || '<em style="color:#aaa;">Clique para definir atividade</em>'}
-	    </small>
-	  `;
-	  return card;
-	}
-    // ------------------------------------------------------------------
-    // Renderização
-    // ------------------------------------------------------------------
     async function carregar() {
-      const [areas, equipes] = await Promise.all([
-        fetch(`${API}/areas`).then(r => r.json()),
-        fetch(`${API}/equipes`).then(r => r.json())
-      ]);
-
-      renderMapa(areas, equipes);
+      try {
+        const [areas, equipes] = await Promise.all([
+          fetch(`${API}/areas`).then(r => r.json()),
+          fetch(`${API}/equipes`).then(r => r.json())
+        ]);
+        render(areas, equipes);
+      } catch (e) { console.error("ERRO DE COMUNICAÇÃO COM API", e); }
     }
 
-    function renderMapa(areas, equipes) {
+    function render(areas, equipes) {
       const mapa = document.getElementById('mapa');
       mapa.innerHTML = '';
-
       areas.forEach(area => {
         const div = document.createElement('div');
         div.className = 'area';
-        div.dataset.codigo = area.codigo || '???';
-
-        div.innerHTML = `
-          <div class="codigo">${area.codigo || 'Sem código'}</div>
-          <div class="equipes-aqui"></div>
-        `;
-
-        // Equipes alocadas nesta área
-        const equipesAqui = equipes.filter(e => e.areaAtual === area.codigo);
-        equipesAqui.forEach(eq => {
-          div.querySelector('.equipes-aqui').appendChild(criarCardEquipeAlocada(eq));
+        div.dataset.codigo = area.codigo;
+        div.innerHTML = `<div class="codigo">${area.codigo}</div><div class="equipes-aqui"></div>`;
+        
+        equipes.filter(e => e.areaAtual === area.codigo).forEach(eq => {
+          div.querySelector('.equipes-aqui').appendChild(criarCard(eq, 'mapa'));
         });
-
         mapa.appendChild(div);
       });
 
-      // Painel de equipes (todas – disponíveis ou não)
       const lista = document.getElementById('disponiveis-lista');
       lista.innerHTML = '';
-      equipes.forEach(eq => {
-        lista.appendChild(criarCardEquipeDisponivel(eq));
+      equipes.filter(e => e.tipo === abaAtual).forEach(eq => {
+        lista.appendChild(criarCard(eq, 'lista'));
       });
 
       adicionarDragAndDrop();
     }
 
-    // ------------------------------------------------------------------
-    // Drag & Drop (mantido exatamente como você já tinha)
-    // ------------------------------------------------------------------
     function adicionarDragAndDrop() {
-      let dragged;
+      let draggedId = null;
 
       document.addEventListener('dragstart', e => {
         if (e.target.classList.contains('equipe')) {
-          dragged = e.target;
-          setTimeout(() => dragged.style.display = 'none', 0);
+          draggedId = e.target.dataset.id;
+          e.target.style.opacity = '0.4';
         }
       });
 
-      document.addEventListener('dragend', () => {
-        if (dragged) {
-          setTimeout(() => dragged.style.display = 'block', 0);
-          dragged = null;
-        }
-      });
+      document.addEventListener('dragend', e => { if (e.target.classList.contains('equipe')) e.target.style.opacity = '1'; });
 
       document.querySelectorAll('.area').forEach(area => {
         area.addEventListener('dragover', e => e.preventDefault());
         area.addEventListener('drop', async e => {
           e.preventDefault();
-          if (!dragged) return;
-
-          const equipeId = dragged.dataset.id;
-          const novaArea = area.dataset.codigo;
-
-          await fetch(`${API}/equipes/${equipeId}/area`, {
+          if (!draggedId) return;
+          await fetch(`${API}/equipes/${draggedId}/area`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ area: novaArea })
+            body: JSON.stringify({ area: area.dataset.codigo })
           });
-
           carregar();
         });
       });
 
-      const disponiveis = document.getElementById('disponiveis-lista');
-      disponiveis.addEventListener('dragover', e => e.preventDefault());
-      disponiveis.addEventListener('drop', async e => {
+      const zonaLista = document.getElementById('disponiveis-lista');
+      zonaLista.addEventListener('dragover', e => e.preventDefault());
+      zonaLista.addEventListener('drop', async e => {
         e.preventDefault();
-        if (!dragged) return;
-
-        const equipeId = dragged.dataset.id;
-
-        await fetch(`${API}/equipes/${equipeId}/area`, {
+        if (!draggedId) return;
+        await fetch(`${API}/equipes/${draggedId}/area`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ area: null })
         });
-
         carregar();
       });
     }
 
-    // ------------------------------------------------------------------
-    // Início
-    // ------------------------------------------------------------------
     carregar();
-    setInterval(carregar, 5000);
+    setInterval(carregar, 10000); 
   </script>
 </body>
 </html>
